@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Tienda</title>
+    <style>
+        /* Estilos basicos para la tienda */
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        div {
+            border: 1px solid gray;
+            padding: 10px;
+            margin: 10px;
+        }
+
+        button {
+            padding: 5px;
+        }
+
+        .log {
+            background: black;
+            color: white;
+            height: 100px;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tienda Virtual</h1>
+
+    <!-- Seccion Factory Method - Para crear productos -->
+    <div>
+        <h3>Crear Producto (Factory)</h3>
+        <select id="tipo">
+            <option value="celular">Celular</option>
+            <option value="ropa">Ropa</option>
+        </select>
+        <button onclick="crear()">Crear</button>
+        <div id="productos"></div>
+    </div>
+
+    <!-- Seccion Observer - Carrito que se actualiza solo -->
+    <div>
+        <h3>Carrito (Observer)</h3>
+        <div id="carrito"></div>
+        <p id="total">Total: $0</p>
+    </div>
+
+    <!-- Seccion Strategy - Para cambiar tipos de descuento -->
+    <div>
+        <h3>Descuento (Strategy)</h3>
+        <select id="descuento" onchange="cambiarDescuento()">
+            <option value="ninguno">Ninguno</option>
+            <option value="diez">10%</option>
+        </select>
+    </div>
+
+    <!-- Log para ver como funcionan los patrones -->
+    <div>
+        <h3>Log</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        // ========================================
+        // POO - HERENCIA Y ENCAPSULACION
+        // ========================================
+
+        /**
+         * Clase padre Producto
+         * Demuestra ENCAPSULACION con propiedades privadas (#)
+         */
+        class Producto {
+            // Propiedades privadas - solo se pueden acceder desde dentro de la clase
+            #nombre;
+            #precio;
+
+            constructor(nombre, precio) {
+                this.#nombre = nombre;
+                this.#precio = precio;
+            }
+
+            // Metodos publicos para acceder a las propiedades privadas
+            getNombre() { return this.#nombre; }
+            getPrecio() { return this.#precio; }
+
+            // Metodo que sera sobrescrito por las clases hijas (POLIMORFISMO)
+            info() {
+                return this.#nombre + " - $" + this.#precio;
+            }
+        }
+
+        /**
+         * Clase Celular - HERENCIA
+         * Hereda de Producto y especializa el comportamiento
+         */
+        class Celular extends Producto {
+            constructor(nombre, precio) {
+                super(nombre, precio); // Llama al constructor del padre
+            }
+
+            // POLIMORFISMO - sobrescribe el metodo del padre
+            info() {
+                return "Celular: " + this.getNombre() + " - $" + this.getPrecio();
+            }
+        }
+
+        /**
+         * Clase Ropa - HERENCIA
+         * Otra clase hija que hereda de Producto
+         */
+        class Ropa extends Producto {
+            constructor(nombre, precio) {
+                super(nombre, precio);
+            }
+
+            // POLIMORFISMO - implementacion especifica para ropa
+            info() {
+                return "Ropa: " + this.getNombre() + " - $" + this.getPrecio();
+            }
+        }
+
+        // ========================================
+        // PATRON FACTORY METHOD
+        // ========================================
+
+        /**
+         * Factory Method Pattern
+         * Crea productos sin que el cliente sepa que clase especifica usar
+         */
+        class Factory {
+            /**
+             * Metodo principal del factory
+             * Decide que tipo de producto crear segun el parametro
+             */
+            static hacer(tipo) {
+                if (tipo === 'celular') {
+                    log("Factory: creando celular");
+                    return new Celular("iPhone", 500);
+                } else {
+                    log("Factory: creando ropa");
+                    return new Ropa("Camisa", 30);
+                }
+            }
+        }
+
+        // ========================================
+        // PATRON OBSERVER
+        // ========================================
+
+        /**
+         * Clase Observable (Subject)
+         * Permite que otros objetos se suscriban para recibir notificaciones
+         */
+        class Observable {
+            constructor() {
+                this.obs = []; // Lista de observadores
+            }
+
+            // Agrega un observador a la lista
+            add(o) { this.obs.push(o); }
+
+            // Notifica a todos los observadores cuando algo cambia
+            notify() { this.obs.forEach(o => o.update()); }
+        }
+
+        /**
+         * Observador concreto
+         * Se actualiza automaticamente cuando cambia el carrito
+         */
+        class Observer {
+            /**
+             * Metodo que se ejecuta cuando el carrito cambia
+             */
+            update() {
+                mostrar();   // Actualiza la vista del carrito
+                calcular();  // Recalcula el total
+                log("Observer: actualizado");
+            }
+        }
+
+        // ========================================
+        // PATRON STRATEGY
+        // ========================================
+
+        /**
+         * Clase abstracta para estrategias de descuento
+         * Define la interfaz comun para todas las estrategias
+         */
+        class Strategy {
+            /**
+             * Metodo que cada estrategia debe implementar
+             */
+            calc(total) { return 0; }
+        }
+
+        /**
+         * Estrategia concreta - Sin descuento
+         */
+        class SinDescuento extends Strategy {
+            calc(total) {
+                log("Strategy: sin descuento");
+                return 0; // No aplica descuento
+            }
+        }
+
+        /**
+         * Estrategia concreta - Con descuento del 10%
+         */
+        class ConDescuento extends Strategy {
+            calc(total) {
+                log("Strategy: 10% descuento");
+                return total * 0.1; // Aplica 10% de descuento
+            }
+        }
+
+        // ========================================
+        // CARRITO - INTEGRA TODOS LOS PATRONES
+        // ========================================
+
+        /**
+         * Carrito que integra los tres patrones:
+         * - Hereda de Observable (OBSERVER)
+         * - Usa Factory para validar productos (FACTORY METHOD)
+         * - Usa Strategy para calcular descuentos (STRATEGY)
+         */
+        class Carrito extends Observable {
+            constructor() {
+                super(); // Llama al constructor de Observable
+                this.items = [];
+                this.strategy = new SinDescuento(); // Strategy por defecto
+            }
+
+            /**
+             * Agrega un producto al carrito
+             * Automaticamente notifica a los observadores (OBSERVER PATTERN)
+             */
+            agregar(p) {
+                this.items.push(p);
+                this.notify(); // Observer Pattern - notifica automaticamente
+            }
+
+            /**
+             * Cambia la estrategia de descuento
+             * Strategy Pattern - permite cambiar algoritmo dinamicamente
+             */
+            setStrategy(s) {
+                this.strategy = s;
+                this.notify(); // Notifica para recalcular
+            }
+
+            /**
+             * Calcula el total usando la estrategia actual
+             */
+            total() {
+                const sub = this.items.reduce((a, b) => a + b.getPrecio(), 0);
+                return sub - this.strategy.calc(sub); // Strategy Pattern en accion
+            }
+        }
+
+        // ========================================
+        // VARIABLES GLOBALES Y FUNCIONES
+        // ========================================
+
+        // Variables principales del sistema
+        let carrito = new Carrito();
+        let productos = [];
+
+        /**
+         * Inicializa el sistema
+         * Configura los observadores del carrito
+         */
+        function init() {
+            carrito.add(new Observer()); // Observer Pattern - agrega observador
+            log("iniciado");
+        }
+
+        /**
+         * Crea un producto usando Factory Method
+         */
+        function crear() {
+            const tipo = document.getElementById('tipo').value;
+            const p = Factory.hacer(tipo); // Factory Method Pattern
+            productos.push(p);
+            mostrarProductos();
+        }
+
+        /**
+         * Muestra la lista de productos disponibles
+         */
+        function mostrarProductos() {
+            const div = document.getElementById('productos');
+            div.innerHTML = '';
+            productos.forEach((p, i) => {
+                div.innerHTML += '<p>' + p.info() +
+                    ' <button onclick="agregar(' + i + ')">+</button></p>';
+            });
+        }
+
+        /**
+         * Agrega un producto al carrito
+         * Dispara el Observer Pattern automaticamente
+         */
+        function agregar(i) {
+            carrito.agregar(productos[i]);
+        }
+
+        /**
+         * Actualiza la vista del carrito
+         * Es llamada automaticamente por el Observer
+         */
+        function mostrar() {
+            const div = document.getElementById('carrito');
+            div.innerHTML = '';
+            carrito.items.forEach(item => {
+                div.innerHTML += '<p>' + item.info() + '</p>';
+            });
+        }
+
+        /**
+         * Calcula y muestra el total
+         * Es llamada automaticamente por el Observer
+         */
+        function calcular() {
+            document.getElementById('total').textContent = 'Total: $' + carrito.total();
+        }
+
+        /**
+         * Cambia la estrategia de descuento
+         * Strategy Pattern - cambio dinamico de algoritmo
+         */
+        function cambiarDescuento() {
+            const tipo = document.getElementById('descuento').value;
+            if (tipo === 'ninguno') {
+                carrito.setStrategy(new SinDescuento()); // Strategy Pattern
+            } else {
+                carrito.setStrategy(new ConDescuento()); // Strategy Pattern
+            }
+        }
+
+        /**
+         * Funcion para mostrar mensajes en el log
+         * Ayuda a ver como funcionan los patrones
+         */
+        function log(msg) {
+            document.getElementById('log').innerHTML += msg + '\n';
+        }
+
+        // Inicializa el sistema cuando carga la pagina
+        window.onload = init;
+    </script>
+</body>
+
+</html>
